@@ -7,6 +7,7 @@ use TYPO3\CMS\Backend\Utility\IconUtility;
 use TYPO3\CMS\Backend\View\PageLayoutView;
 use TYPO3\CMS\Backend\View\PageLayoutViewDrawItemHookInterface;
 use TYPO3\CMS\Core\Database\QueryGenerator;
+use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 /**
@@ -331,7 +332,7 @@ class DrawItem implements PageLayoutViewDrawItemHookInterface {
 			<div data-colpos="' . $colPos . '" data-language-uid="' . $row['sys_language_uid'] . '" class="t3js-sortable t3js-sortable-lang t3js-sortable-lang-' . $row['sys_language_uid'] . ' t3-page-ce-wrapper ui-sortable">
 				<div class="t3-page-ce t3js-page-ce" data-container="' . $row['uid'] . '" id="' . str_replace('.', '', uniqid('', TRUE)) . '">
 					<div class="t3js-page-new-ce t3-page-ce-wrapper-new-ce" id="colpos-' . $colPos . '-' . str_replace('.', '', uniqid('', TRUE)) . '">
-						<a href="#" onclick="' . htmlspecialchars($newParams) . '" title="' . $GLOBALS['LANG']->getLL('newContentElement', TRUE) . '" class="btn btn-default btn-sm">' . IconUtility::getSpriteIcon('actions-document-new') . ' ' . $GLOBALS['LANG']->getLL('content', TRUE) . '</a>
+						<a class="btn btn-default" href="#" onclick="' . htmlspecialchars($newParams) . '" title="' . $GLOBALS['LANG']->getLL('newContentElement', TRUE) . '" class="btn btn-default btn-sm">' . IconUtility::getSpriteIcon('actions-document-new') . ' ' . $GLOBALS['LANG']->getLL('content', TRUE) . '</a>
 					</div>
 					<div class="t3-page-ce-dropzone-available t3js-page-ce-dropzone-available"></div>
 				</div>';
@@ -344,13 +345,13 @@ class DrawItem implements PageLayoutViewDrawItemHookInterface {
 				<div class="t3-page-ce t3js-page-ce t3js-page-ce-sortable' . $statusHidden . '" data-table="tt_content" data-uid="' . $itemRow['uid'] . '" data-ctype="' . $itemRow['CType'] . '"><div class="t3-page-ce-dragitem" id="' . str_replace('.', '', uniqid('', TRUE)) . '">' . $this->renderSingleElementHTML($parentObject, $itemRow) . '</div></div>';
 					// New content element:
 					if ($parentObject->option_newWizard) {
-						$moduleUrlParameters = array(
-							'id' => $itemRow['pid'],
-							'sys_language_uid' => $itemRow['sys_language_uid'],
-							'colPos' => $itemRow['colPos'],
-							'uid_pid' => -$itemRow['uid']
-						);
-						$onClick = 'window.location.href=\'' . BackendUtility::getModuleUrl('new_content_element', $moduleUrlParameters, '') . '&returnUrl=' . rawurlencode(GeneralUtility::getIndpEnv('REQUEST_URI')) . '\';';
+						// If mod.web_list.newContentWiz.overrideWithExtension is set, use that extension's create new content wizard instead:
+						$tmpTSc = BackendUtility::getModTSconfig($this->pageinfo['uid'], 'mod.web_list');
+						$tmpTSc = $tmpTSc['properties']['newContentWiz.']['overrideWithExtension'];
+						$newContentWizScriptPath = ExtensionManagementUtility::isLoaded($tmpTSc)
+							? $this->backPath . ExtensionManagementUtility::extRelPath($tmpTSc) . 'mod1/db_new_content_el.php?id=' . $itemRow['pid'] . '&sys_language_uid=' . $itemRow['sys_language_uid'] . '&colPos=' . $itemRow['colPos'] . '&uid_pid=' . -$itemRow['uid'] . '&returnUrl=' . rawurlencode(GeneralUtility::getIndpEnv('REQUEST_URI'))
+							: BackendUtility::getModuleUrl('new_content_element', array('id' => $itemRow['pid'], 'sys_language_uid' => $itemRow['sys_language_uid'], 'colPos' => $itemRow['colPos'], 'uid_pid' => -$itemRow['uid'],  'returnUrl' => GeneralUtility::getIndpEnv('REQUEST_URI')));
+						$onClick = 'window.location.href=' . GeneralUtility::quoteJSvalue($newContentWizScriptPath) . ';';
 					} else {
 						$params = '&edit[tt_content][' . -$itemRow['uid'] . ']=new';
 						$onClick = BackendUtility::editOnClick($params, $this->backPath);
@@ -358,7 +359,7 @@ class DrawItem implements PageLayoutViewDrawItemHookInterface {
 					$gridContent[$colPos] .= '
 				<div class="t3js-page-new-ce t3-page-ce-wrapper-new-ce" id="colpos-' . $itemRow['tx_gridelements_columns'] . '-page-' . $itemRow['pid'] . '-gridcontainer-' . $itemRow['tx_gridelements_container'] .
 						'-' . str_replace('.', '', uniqid('', TRUE)) . '">
-					<a href="#" onclick="' . htmlspecialchars($onClick) . '" title="' . $GLOBALS['LANG']->getLL('newContentElement', TRUE) . '" class="btn btn-default btn-sm">' . IconUtility::getSpriteIcon('actions-document-new') . ' ' . $GLOBALS['LANG']->getLL('content', TRUE) . '</a>
+					<a class="btn btn-default" href="#" onclick="' . htmlspecialchars($onClick) . '" title="' . $GLOBALS['LANG']->getLL('newContentElement', TRUE) . '" class="btn btn-default btn-sm">' . IconUtility::getSpriteIcon('actions-document-new') . ' ' . $GLOBALS['LANG']->getLL('content', TRUE) . '</a>
 				</div>
 				<div class="t3-page-ce-dropzone-available t3js-page-ce-dropzone-available"></div>
 				</div>
